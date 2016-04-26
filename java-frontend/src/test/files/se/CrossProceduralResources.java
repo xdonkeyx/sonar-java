@@ -19,7 +19,7 @@ public class CrossProcedural {
   
   public void callerClose() {
     try{
-      OutputStream stream = new FileOutputStream("myfile.txt");  // Noncompliant  <-------- Error!!!
+      OutputStream stream = new FileOutputStream("myfile.txt");  // Noncompliant  <-------- FP, must be fixed!!!
       close(stream);
     }catch(IOException e){}
   }
