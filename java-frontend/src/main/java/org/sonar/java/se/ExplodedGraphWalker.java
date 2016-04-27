@@ -412,7 +412,9 @@ public class ExplodedGraphWalker extends BaseTreeVisitor {
     LOG.debug("visiting node " + tree.kind().name() + " at line " + ((JavaTree) tree).getLine());
     if (!checkerDispatcher.executeCheckPreStatement(tree)) {
       // Some of the check pre statement sink the execution on this node.
-      methodBehavior.notifyExecutionSink();
+      ProgramState state = programState.stackValue(constraintManager.createSymbolicExceptionValue(NullPointerException.class));
+      methodBehavior.addYield(state, constraintManager);
+      // methodBehavior.notifyExecutionSink();
       return;
     }
     switch (tree.kind()) {
