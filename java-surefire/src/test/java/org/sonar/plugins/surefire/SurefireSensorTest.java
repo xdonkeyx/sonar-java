@@ -32,7 +32,6 @@ import org.sonar.api.config.Settings;
 import org.sonar.api.measures.CoreMetrics;
 import org.sonar.api.measures.Metric;
 import org.sonar.api.resources.Project;
-import org.sonar.api.resources.ProjectFileSystem;
 import org.sonar.api.resources.Qualifiers;
 import org.sonar.api.resources.Resource;
 import org.sonar.api.resources.Scopes;
@@ -68,7 +67,7 @@ public class SurefireSensorTest {
   public void before() {
     project = mock(Project.class);
     fs = new DefaultFileSystem(new File("src/test/resource"));
-    DefaultInputFile javaFile = new DefaultInputFile("src/org/foo/java");
+    DefaultInputFile javaFile = new DefaultInputFile("", "src/org/foo/java");
     javaFile.setLanguage("java");
     fs.add(javaFile);
     perspectives = mock(ResourcePerspectives.class);
@@ -98,7 +97,7 @@ public class SurefireSensorTest {
 
   @Test
   public void should_not_execute_if_filesystem_does_not_contains_java_files() {
-    surefireSensor = new SurefireSensor(new SurefireJavaParser(perspectives, javaResourceLocator), mock(Settings.class), new DefaultFileSystem(null), pathResolver);
+    surefireSensor = new SurefireSensor(new SurefireJavaParser(perspectives, javaResourceLocator), mock(Settings.class), new DefaultFileSystem((File)null), pathResolver);
     Assertions.assertThat(surefireSensor.shouldExecuteOnProject(project)).isFalse();
   }
 
@@ -107,11 +106,11 @@ public class SurefireSensorTest {
     Settings settings = mock(Settings.class);
     when(settings.getString(SurefireUtils.SUREFIRE_REPORTS_PATH_PROPERTY)).thenReturn("unknown");
 
-    ProjectFileSystem projectFileSystem = mock(ProjectFileSystem.class);
-    when(projectFileSystem.resolvePath("unknown")).thenReturn(new File("src/test/resources/unknown"));
-
-    Project project = mock(Project.class);
-    when(project.getFileSystem()).thenReturn(projectFileSystem);
+//    ProjectFileSystem projectFileSystem = mock(ProjectFileSystem.class);
+//    when(projectFileSystem.resolvePath("unknown")).thenReturn(new File("src/test/resources/unknown"));
+//
+//    Project project = mock(Project.class);
+//    when(project.getFileSystem()).thenReturn(projectFileSystem);
 
     SurefireSensor surefireSensor = new SurefireSensor(mock(SurefireJavaParser.class), settings, fs, pathResolver);
     surefireSensor.analyse(project, mockContext());

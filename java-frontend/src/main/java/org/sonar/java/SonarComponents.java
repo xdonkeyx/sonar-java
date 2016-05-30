@@ -49,8 +49,6 @@ import java.util.List;
 
 public class SonarComponents implements BatchExtension {
 
-  private static final boolean IS_SONARQUBE_52 = isSonarQube52();
-
   private final FileLinesContextFactory fileLinesContextFactory;
   private final ResourcePerspectives resourcePerspectives;
   private final JavaTestClasspath javaTestClasspath;
@@ -201,15 +199,11 @@ public class SonarComponents implements BatchExtension {
       return;
     }
     Double cost = analyzerMessage.getCost();
-    if (IS_SONARQUBE_52) {
-      reportIssueAfterSQ52(analyzerMessage, key, inputPath, cost);
-    } else {
-      reportIssueBeforeSQ52(inputPath, key, cost, analyzerMessage.getMessage(), analyzerMessage.getLine());
-    }
+    reportIssue(analyzerMessage, key, inputPath, cost);
   }
 
   @VisibleForTesting
-  void reportIssueAfterSQ52(AnalyzerMessage analyzerMessage, RuleKey key, InputPath inputPath, Double cost) {
+  void reportIssue(AnalyzerMessage analyzerMessage, RuleKey key, InputPath inputPath, Double cost) {
     JavaIssue issue = JavaIssue.create(context, key, cost);
     AnalyzerMessage.TextSpan textSpan = analyzerMessage.primaryLocation();
     if (textSpan == null) {
@@ -226,24 +220,4 @@ public class SonarComponents implements BatchExtension {
     issue.save();
   }
 
-  private void reportIssueBeforeSQ52(InputPath inputFile, RuleKey key, @Nullable Double cost, String message, @Nullable Integer line) {
-    Issuable issuable = issuableFor(inputFile);
-    if (issuable != null) {
-      Issuable.IssueBuilder newIssueBuilder = issuable.newIssueBuilder()
-        .ruleKey(key)
-        .message(message)
-        .line(line)
-        .effortToFix(cost);
-      issuable.addIssue(newIssueBuilder.build());
-    }
-  }
-
-  private static boolean isSonarQube52() {
-    try {
-      Issuable.IssueBuilder.class.getMethod("newLocation");
-      return true;
-    } catch (NoSuchMethodException e) {
-      return false;
-    }
-  }
 }
