@@ -93,7 +93,7 @@ public class JavaSquidSensorTest {
   private void testIssueCreation(InputFile.Type onType, int expectedIssues) {
     Settings settings = new Settings();
     DefaultFileSystem fs = new DefaultFileSystem(new File("src/test/java/"));
-    String effectiveKey = "src/test/java/org/sonar/plugins/java/JavaSquidSensorTest.java";
+    String effectiveKey = "org/sonar/plugins/java/JavaSquidSensorTest.java";
     File file = new File(effectiveKey);
     fs.add(new DefaultInputFile("", file.getPath()).setLanguage("java").setType(onType));
     Project project = mock(Project.class);

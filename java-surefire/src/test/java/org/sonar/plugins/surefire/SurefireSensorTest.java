@@ -22,8 +22,6 @@ package org.sonar.plugins.surefire;
 import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 import org.sonar.api.batch.SensorContext;
 import org.sonar.api.batch.fs.internal.DefaultFileSystem;
 import org.sonar.api.batch.fs.internal.DefaultInputFile;
@@ -36,7 +34,6 @@ import org.sonar.api.resources.Qualifiers;
 import org.sonar.api.resources.Resource;
 import org.sonar.api.resources.Scopes;
 import org.sonar.api.scan.filesystem.PathResolver;
-import org.sonar.api.test.IsResource;
 import org.sonar.plugins.java.api.JavaResourceLocator;
 import org.sonar.plugins.surefire.api.SurefireUtils;
 
@@ -66,19 +63,14 @@ public class SurefireSensorTest {
   @Before
   public void before() {
     project = mock(Project.class);
-    fs = new DefaultFileSystem(new File("src/test/resource"));
+    fs = new DefaultFileSystem(new File("src/test/resources"));
     DefaultInputFile javaFile = new DefaultInputFile("", "src/org/foo/java");
     javaFile.setLanguage("java");
     fs.add(javaFile);
     perspectives = mock(ResourcePerspectives.class);
 
     javaResourceLocator = mock(JavaResourceLocator.class);
-    when(javaResourceLocator.findResourceByClassName(anyString())).thenAnswer(new Answer<Resource>() {
-      @Override
-      public Resource answer(InvocationOnMock invocation) throws Throwable {
-        return resource((String) invocation.getArguments()[0]);
-      }
-    });
+    when(javaResourceLocator.findResourceByClassName(anyString())).thenAnswer(invocation -> resource((String) invocation.getArguments()[0]));
 
     surefireSensor = new SurefireSensor(new SurefireJavaParser(perspectives, javaResourceLocator), mock(Settings.class), fs, pathResolver);
   }
@@ -247,4 +239,5 @@ public class SurefireSensorTest {
     verify(context).saveMeasure(eq(resource("org.sonar.Foo")), eq(CoreMetrics.SKIPPED_TESTS), eq(2d));
     verify(context).saveMeasure(eq(resource("org.sonar.Foo")), eq(CoreMetrics.TEST_SUCCESS_DENSITY), eq(50d));
   }
+
 }

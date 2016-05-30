@@ -23,7 +23,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import org.sonar.api.BatchExtension;
+import org.sonar.api.batch.BatchSide;
 import org.sonar.api.batch.SensorContext;
 import org.sonar.api.batch.fs.FileSystem;
 import org.sonar.api.batch.fs.InputFile;
@@ -31,7 +31,6 @@ import org.sonar.api.batch.fs.InputPath;
 import org.sonar.api.batch.rule.CheckFactory;
 import org.sonar.api.batch.rule.Checks;
 import org.sonar.api.component.ResourcePerspectives;
-import org.sonar.api.issue.Issuable;
 import org.sonar.api.measures.FileLinesContext;
 import org.sonar.api.measures.FileLinesContextFactory;
 import org.sonar.api.rule.RuleKey;
@@ -46,8 +45,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
-public class SonarComponents implements BatchExtension {
+@BatchSide
+public class SonarComponents {
 
   private final FileLinesContextFactory fileLinesContextFactory;
   private final ResourcePerspectives resourcePerspectives;
@@ -112,10 +111,6 @@ public class SonarComponents implements BatchExtension {
 
   public Highlightable highlightableFor(File file) {
     return resourcePerspectives.as(Highlightable.class, inputFromIOFile(file));
-  }
-
-  public Issuable issuableFor(InputPath inputPath) {
-    return resourcePerspectives.as(Issuable.class, inputPath);
   }
 
   public List<File> getJavaClasspath() {
