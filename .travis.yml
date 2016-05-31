@@ -12,7 +12,7 @@ install: true
 script: "./travis.sh"
 env:
 - TEST=CI
-- TEST=plugin SQ_VERSION=LTS
+- TEST=plugin SQ_VERSION=5.6-RC2
 matrix:
   fast_finish: true
   include:
