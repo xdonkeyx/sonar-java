@@ -37,6 +37,7 @@ import org.sonar.plugins.java.api.tree.ClassTree;
 import org.sonar.plugins.java.api.tree.ExpressionTree;
 import org.sonar.plugins.java.api.tree.IdentifierTree;
 import org.sonar.plugins.java.api.tree.LambdaExpressionTree;
+import org.sonar.plugins.java.api.tree.MethodReferenceTree;
 import org.sonar.plugins.java.api.tree.MethodTree;
 import org.sonar.plugins.java.api.tree.NewClassTree;
 import org.sonar.plugins.java.api.tree.Tree;
@@ -88,16 +89,31 @@ public class DeadStoreCheck extends IssuableSubscriptionVisitor {
     for (Tree element : elements) {
       Symbol symbol;
       switch (element.kind()) {
+        case PLUS_ASSIGNMENT:
+        case DIVIDE_ASSIGNMENT:
+        case MINUS_ASSIGNMENT:
+        case MULTIPLY_ASSIGNMENT:
+        case OR_ASSIGNMENT:
+        case XOR_ASSIGNMENT:
+        case AND_ASSIGNMENT:
+        case LEFT_SHIFT_ASSIGNMENT:
+        case RIGHT_SHIFT_ASSIGNMENT:
+        case UNSIGNED_RIGHT_SHIFT_ASSIGNMENT:
+        case REMAINDER_ASSIGNMENT:
         case ASSIGNMENT:
           AssignmentExpressionTree assignmentExpressionTree = (AssignmentExpressionTree) element;
           ExpressionTree lhs = ExpressionsHelper.skipParentheses(assignmentExpressionTree.variable());
           if (lhs.is(Tree.Kind.IDENTIFIER)) {
             symbol = ((IdentifierTree) lhs).symbol();
-            if (isLocalVariable(symbol) && !out.contains(symbol)) {
+            if (isLocalVariable(symbol) && !out.contains(symbol) && (assignmentExpressionTree.is(Tree.Kind.ASSIGNMENT) || isParentExpressionStatement(element))) {
               createIssue(assignmentExpressionTree.operatorToken(), assignmentExpressionTree.expression(), symbol);
             }
             assignmentLHS.add(lhs);
-            out.remove(symbol);
+            if(element.is(Tree.Kind.ASSIGNMENT)) {
+              out.remove(symbol);
+            } else {
+              out.add(symbol);
+            }
           }
           break;
         case IDENTIFIER:
@@ -118,6 +134,10 @@ public class DeadStoreCheck extends IssuableSubscriptionVisitor {
         case LAMBDA_EXPRESSION:
           LambdaExpressionTree lambda = (LambdaExpressionTree) element;
           out.addAll(getUsedLocalVarInSubTree(lambda.body(), methodSymbol));
+          break;
+        case METHOD_REFERENCE:
+          MethodReferenceTree methodRef = (MethodReferenceTree) element;
+          out.addAll(getUsedLocalVarInSubTree(methodRef.expression(), methodSymbol));
           break;
         case TRY_STATEMENT:
           TryStatementTree tryStatement = (TryStatementTree) element;

@@ -19,25 +19,21 @@
  */
 package org.sonar.java;
 
-import com.google.common.collect.Lists;
 import org.junit.Before;
 import org.junit.Test;
 import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.batch.fs.internal.DefaultFileSystem;
 import org.sonar.api.batch.fs.internal.DefaultInputFile;
 import org.sonar.api.config.Settings;
-import org.sonar.api.resources.Project;
+import org.sonar.squidbridge.api.AnalysisException;
 
 import java.io.File;
 
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class JavaClasspathTest {
 
-  private Project project;
   private DefaultFileSystem fs;
   private Settings settings;
   private JavaClasspath javaClasspath;
@@ -45,12 +41,11 @@ public class JavaClasspathTest {
   @Before
   public void setUp() throws Exception {
     fs = new DefaultFileSystem(new File("src/test/files/classpath/"));
-    DefaultInputFile inputFile = new DefaultInputFile("foo.java");
+    DefaultInputFile inputFile = new DefaultInputFile("","foo.java");
     inputFile.setLanguage("java");
     inputFile.setType(InputFile.Type.MAIN);
     fs.add(inputFile);
     settings = new Settings();
-    project = mock(Project.class);
   }
 
   @Test
@@ -62,17 +57,6 @@ public class JavaClasspathTest {
   public void when_property_not_defined_project_classpath_null_getElements_should_be_empty() {
     javaClasspath = createJavaClasspath();
     assertThat(javaClasspath.getElements()).isEmpty();
-  }
-
-  @Test
-  public void new_properties_not_set_should_fall_back_on_old_ones() throws Exception {
-    settings.setProperty("sonar.binaries", "bin");
-    settings.setProperty("sonar.libraries", "lib/hello.jar");
-
-    javaClasspath = new JavaClasspath(project, settings, fs);
-    assertThat(javaClasspath.getElements()).hasSize(2);
-    assertThat(javaClasspath.getElements()).onProperty("name").contains("bin", "hello.jar");
-    assertThat(javaClasspath.getBinaryDirs()).hasSize(1);
   }
 
   @Test
@@ -193,16 +177,25 @@ public class JavaClasspathTest {
   }
 
   @Test
-  public void libraries_without_dir() throws Exception {
+  public void deprecated_properties_set_should_fail_the_analysis() throws Exception {
     settings.setProperty("sonar.binaries", "bin");
     settings.setProperty("sonar.libraries", "hello.jar");
-    fs.setBaseDir(new File("src/test/files/classpath/"));
-    checkIllegalStateException("No files nor directories matching 'hello.jar'");
+    try {
+      javaClasspath = createJavaClasspath();
+      javaClasspath.getElements();
+      fail("Exception should have been raised");
+    }catch (AnalysisException ise) {
+      assertThat(ise.getMessage()).isEqualTo("sonar.binaries and sonar.libraries are not supported since version 4.0 of sonar-java-plugin, please use sonar.java.binaries and sonar.java.libraries instead");
+    }
   }
 
   @Test
   public void libraries_should_read_dir_of_class_files() {
-    fs.setBaseDir(new File("src/test/files/"));
+    fs = new DefaultFileSystem(new File("src/test/files/"));
+    DefaultInputFile inputFile = new DefaultInputFile("","foo.java");
+    inputFile.setLanguage("java");
+    inputFile.setType(InputFile.Type.MAIN);
+    fs.add(inputFile);
     settings.setProperty(JavaClasspathProperties.SONAR_JAVA_LIBRARIES, "classpath");
     javaClasspath = createJavaClasspath();
     assertThat(javaClasspath.getElements()).hasSize(3);
@@ -213,12 +206,8 @@ public class JavaClasspathTest {
 
   @Test
   public void parent_module_should_not_validate_sonar_libraries() {
-    when(project.getModules()).thenReturn(Lists.newArrayList(mock(Project.class)));
     settings.setProperty(JavaClasspathProperties.SONAR_JAVA_LIBRARIES, "non-existing.jar");
     javaClasspath = createJavaClasspath();
-    assertThat(javaClasspath.getElements()).isEmpty();
-
-    when(project.getModules()).thenReturn(Lists.<Project>newArrayList());
     checkIllegalStateException("No files nor directories matching 'non-existing.jar'");
   }
 
@@ -226,7 +215,7 @@ public class JavaClasspathTest {
   public void sonar_binaries_should_not_check_for_existence_of_files_when_no_sources() throws Exception {
     settings.setProperty(JavaClasspathProperties.SONAR_JAVA_BINARIES, "toto/**/hello.jar");
     fs = new DefaultFileSystem(new File("src/test/files/classpath/"));
-    DefaultInputFile inputFile = new DefaultInputFile("plop.java");
+    DefaultInputFile inputFile = new DefaultInputFile("", "plop.java");
     inputFile.setType(InputFile.Type.TEST);
     inputFile.setLanguage("java");
     fs.add(inputFile);
@@ -240,14 +229,6 @@ public class JavaClasspathTest {
     checkIllegalStateException("No files nor directories matching 'dummyDir'");
   }
 
-  @Test
-  public void specifying_dir_for_library_should_check_for_jar_files() {
-    settings.setProperty("sonar.libraries", "lib");
-    javaClasspath = createJavaClasspath();
-    assertThat(javaClasspath.getElements()).hasSize(3);
-
-  }
-
   private void checkIllegalStateException(String message) {
     try {
       javaClasspath = createJavaClasspath();
@@ -259,6 +240,6 @@ public class JavaClasspathTest {
   }
 
   private JavaClasspath createJavaClasspath() {
-    return new JavaClasspath(project, settings, fs);
+    return new JavaClasspath(settings, fs);
   }
 }

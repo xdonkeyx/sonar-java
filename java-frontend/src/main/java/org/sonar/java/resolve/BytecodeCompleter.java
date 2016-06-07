@@ -26,12 +26,13 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.io.Closeables;
 import org.apache.commons.lang.StringUtils;
 import org.objectweb.asm.ClassReader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.Loggers;
 import org.sonar.java.bytecode.ClassLoaderBuilder;
+import org.sonar.java.bytecode.loader.SquidClassLoader;
 
 import javax.annotation.Nullable;
-import java.io.Closeable;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,7 +42,7 @@ import java.util.Map;
 
 public class BytecodeCompleter implements JavaSymbol.Completer {
 
-  private static final Logger LOG = LoggerFactory.getLogger(BytecodeCompleter.class);
+  private static final Logger LOG = Loggers.get(BytecodeCompleter.class);
 
   private static final int ACCEPTABLE_BYTECODE_FLAGS = Flags.ACCESS_FLAGS |
       Flags.INTERFACE | Flags.ANNOTATION | Flags.ENUM |
@@ -232,8 +233,8 @@ public class BytecodeCompleter implements JavaSymbol.Completer {
   }
 
   public void done() {
-    if (classLoader != null && classLoader instanceof Closeable) {
-      Closeables.closeQuietly((Closeable) classLoader);
+    if (classLoader != null && classLoader instanceof SquidClassLoader) {
+      ((SquidClassLoader) classLoader).close();
     }
   }
 

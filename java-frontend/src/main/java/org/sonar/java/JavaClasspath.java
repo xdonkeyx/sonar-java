@@ -19,38 +19,37 @@
  */
 package org.sonar.java;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.sonar.api.batch.fs.FileSystem;
 import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.config.Settings;
-import org.sonar.api.resources.Project;
-import org.sonar.api.utils.TimeProfiler;
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.Loggers;
+import org.sonar.api.utils.log.Profiler;
+import org.sonar.squidbridge.api.AnalysisException;
 
 import java.io.File;
 import java.util.List;
 
 public class JavaClasspath extends AbstractJavaClasspath {
 
-  private static final Logger LOG = LoggerFactory.getLogger(JavaClasspath.class);
+  private static final Logger LOG = Loggers.get(JavaClasspath.class);
 
-  public JavaClasspath(Project project, Settings settings, FileSystem fs) {
-    super(project, settings, fs, InputFile.Type.MAIN);
+  public JavaClasspath(Settings settings, FileSystem fs) {
+    super(settings, fs, InputFile.Type.MAIN);
   }
 
   @Override
   protected void init() {
     if (!initialized) {
-      TimeProfiler profiler = new TimeProfiler(getClass()).start("JavaClasspath initialization");
+      Profiler profiler = Profiler.create(LOG).startInfo("JavaClasspath initialization");
       initialized = true;
-      validateLibraries = project.getModules().isEmpty();
       binaries = getFilesFromProperty(JavaClasspathProperties.SONAR_JAVA_BINARIES);
       List<File> libraries = getFilesFromProperty(JavaClasspathProperties.SONAR_JAVA_LIBRARIES);
-      boolean useDeprecatedProperties = binaries.isEmpty() && libraries.isEmpty();
-      if (useDeprecatedProperties) {
-        binaries = getFilesFromProperty("sonar.binaries");
-        libraries = getFilesFromProperty("sonar.libraries");
+      if (binaries.isEmpty() && libraries.isEmpty() && useDeprecatedProperties()) {
+        throw new AnalysisException(
+          "sonar.binaries and sonar.libraries are not supported since version 4.0 of sonar-java-plugin, please use sonar.java.binaries and sonar.java.libraries instead");
       }
       elements = Lists.newArrayList(binaries);
       if(libraries.isEmpty()) {
@@ -58,11 +57,12 @@ public class JavaClasspath extends AbstractJavaClasspath {
             "you might end up with less precise results. Bytecode can be provided using sonar.java.libraries property");
       }
       elements.addAll(libraries);
-      if (useDeprecatedProperties && !elements.isEmpty()) {
-        LOG.warn("sonar.binaries and sonar.libraries are deprecated since version 2.5 of sonar-java-plugin, please use sonar.java.binaries and sonar.java.libraries instead");
-      }
-      profiler.stop();
+      profiler.stopInfo();
     }
+  }
+
+  private boolean useDeprecatedProperties() {
+    return !Strings.isNullOrEmpty(settings.getString("sonar.binaries")) && !Strings.isNullOrEmpty(settings.getString("sonar.libraries"));
   }
 
 }

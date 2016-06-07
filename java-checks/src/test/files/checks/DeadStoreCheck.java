@@ -195,4 +195,30 @@ class A {
     }
 
   }
+
+  public class MyClass {
+    private static class Foo {
+      void bar(int p){
+      }
+    }
+
+    public static void main(String... args) {
+      Foo x = new Foo(); // compliant
+      List<Integer> list = new ArrayList<>();
+      list.forEach(x::bar);
+    }
+    int foo() {
+      int i,j;
+      i = i + 1; // Noncompliant
+      j += 1; // Noncompliant
+      int k = 0;
+      k += 2;
+      System.out.println(k);
+      int n;
+      n = 2;
+      n += 12; // Noncompliant
+      int order = 0;
+      return (short) (order &= 12);
+    }
+  }
 }

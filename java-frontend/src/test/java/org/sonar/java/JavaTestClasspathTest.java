@@ -25,17 +25,14 @@ import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.batch.fs.internal.DefaultFileSystem;
 import org.sonar.api.batch.fs.internal.DefaultInputFile;
 import org.sonar.api.config.Settings;
-import org.sonar.api.resources.Project;
 
 import java.io.File;
 
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
-import static org.mockito.Mockito.mock;
 
 public class JavaTestClasspathTest {
 
-  private Project project;
   private DefaultFileSystem fs;
   private Settings settings;
   private JavaTestClasspath javaTestClasspath;
@@ -43,12 +40,11 @@ public class JavaTestClasspathTest {
   @Before
   public void setUp() throws Exception {
     fs = new DefaultFileSystem(new File("src/test/files/classpath/"));
-    DefaultInputFile inputFile = new DefaultInputFile("foo.java");
+    DefaultInputFile inputFile = new DefaultInputFile("", "foo.java");
     inputFile.setLanguage("java");
     inputFile.setType(InputFile.Type.TEST);
     fs.add(inputFile);
     settings = new Settings();
-    project = mock(Project.class);
   }
 
   @Test
@@ -72,7 +68,6 @@ public class JavaTestClasspathTest {
   public void libraries_without_dir() throws Exception {
     settings.setProperty(JavaClasspathProperties.SONAR_JAVA_TEST_BINARIES, "bin");
     settings.setProperty(JavaClasspathProperties.SONAR_JAVA_TEST_LIBRARIES, "hello.jar");
-    fs.setBaseDir(new File("src/test/files/classpath/"));
     checkIllegalStateException("No files nor directories matching 'hello.jar'");
   }
 
@@ -88,7 +83,7 @@ public class JavaTestClasspathTest {
 
 
   private JavaTestClasspath createJavaClasspath() {
-    return new JavaTestClasspath(project, settings, fs);
+    return new JavaTestClasspath(settings, fs);
   }
 
 

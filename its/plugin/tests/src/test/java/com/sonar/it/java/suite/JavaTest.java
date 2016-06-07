@@ -22,11 +22,9 @@ package com.sonar.it.java.suite;
 import com.sonar.orchestrator.Orchestrator;
 import com.sonar.orchestrator.build.BuildResult;
 import com.sonar.orchestrator.build.MavenBuild;
-import com.sonar.orchestrator.build.SonarRunner;
+import com.sonar.orchestrator.build.SonarScanner;
 import com.sonar.orchestrator.locator.MavenLocation;
 import com.sonar.orchestrator.locator.MavenLocator;
-import com.sonar.orchestrator.version.Version;
-
 import org.fest.assertions.Condition;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -34,7 +32,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.sonar.api.CoreProperties;
-import org.sonar.wsclient.Sonar;
 import org.sonar.wsclient.issue.Issue;
 import org.sonar.wsclient.issue.IssueClient;
 import org.sonar.wsclient.issue.IssueQuery;
@@ -46,7 +43,6 @@ import java.io.File;
 import java.util.List;
 
 import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assume.assumeTrue;
 
 public class JavaTest {
 
@@ -101,8 +97,7 @@ public class JavaTest {
   public void shouldFailIfInvalidJavaPackage() {
     MavenBuild build = MavenBuild.create()
       .setPom(TestUtils.projectPom("invalid-java-package"))
-      .setCleanSonarGoals()
-      .setProperty("sonar.dynamicAnalysis", "false");
+      .setCleanSonarGoals();
 
     BuildResult buildResult = orchestrator.executeBuildQuietly(build);
     assertThat(buildResult.getStatus()).isEqualTo(0);
@@ -114,16 +109,8 @@ public class JavaTest {
       .setPom(TestUtils.projectPom("measures-on-directory"))
       .setCleanPackageSonarGoals();
     BuildResult result = orchestrator.executeBuildQuietly(build);
-    Version version = orchestrator.getConfiguration().getPluginVersion("java");
-    if (version.isGreaterThan("2.1") && !version.isGreaterThanOrEquals("2.4")) {
-      assertThat(result.getStatus()).overridingErrorMessage("build of project measures-on-directory should have failed and have a status different than 0")
-        .isGreaterThan(0);
-      assertThat(result.getLogs()).contains("Directory contains files belonging to different packages - some metrics could be reported incorrectly: "
-        + new File(TestUtils.projectPom("measures-on-directory").getParentFile(), "src/main/java/org"));
-    } else {
-      // sonar-java 2.1 does not fail if multiple package in same directory.
-      assertThat(result.getStatus()).isEqualTo(0);
-    }
+    //since sonar-java 2.1 does not fail if multiple package in same directory.
+    assertThat(result.getStatus()).isEqualTo(0);
   }
 
   @Test
@@ -143,35 +130,13 @@ public class JavaTest {
   }
 
   /**
-   * SONAR-3228
-   */
-  @Test
-  public void shouldPersistMetricsEvenIfZero() {
-    assumeTrue(JavaTestSuite.sonarqube_version_is_prior_to_5_2());
-    MavenBuild build = MavenBuild.create()
-      .setPom(TestUtils.projectPom("zero-value-metric-project"))
-      .setCleanPackageSonarGoals();
-    orchestrator.executeBuild(build);
-
-    Sonar wsClient = orchestrator.getServer().getWsClient();
-
-    Resource project = wsClient.find(ResourceQuery.createForMetrics("com.sonarsource.it.projects:zero-value-metric-project",
-      "package_cycles", "package_feedback_edges", "package_tangles"));
-
-    assertThat(project.getMeasureIntValue("package_cycles")).isEqualTo(0);
-    assertThat(project.getMeasureIntValue("package_feedback_edges")).isEqualTo(0);
-    assertThat(project.getMeasureIntValue("package_tangles")).isEqualTo(0);
-  }
-
-  /**
    * SONARJAVA-19
    */
   @Test
   public void suppressWarnings_nosonar() throws Exception {
     MavenBuild build = MavenBuild.create(TestUtils.projectPom("suppress-warnings"))
       .setCleanSonarGoals()
-      .setProperty("sonar.profile", "suppress-warnings")
-      .setProperty("sonar.dynamicAnalysis", "false");
+      .setProperty("sonar.profile", "suppress-warnings");
     orchestrator.executeBuild(build);
 
     assertThat(getMeasure("org.example:example", "violations").getValue()).isEqualTo(2);
@@ -184,8 +149,7 @@ public class JavaTest {
   public void filtered_issues() throws Exception {
     MavenBuild build = MavenBuild.create(TestUtils.projectPom("filtered-issues"))
       .setCleanPackageSonarGoals()
-      .setProperty("sonar.profile", "filtered-issues")
-      .setProperty("sonar.dynamicAnalysis", "false");
+      .setProperty("sonar.profile", "filtered-issues");
     orchestrator.executeBuild(build);
 
     assertThat(getMeasure("org.example:example", "violations").getValue()).isEqualTo(2);
@@ -214,22 +178,21 @@ public class JavaTest {
    */
   @Test
   public void support_jav_file_extension() {
-    SonarRunner scan = SonarRunner.create(TestUtils.projectDir("jav-file-extension"))
+    SonarScanner scan = SonarScanner.create(TestUtils.projectDir("jav-file-extension"))
       .setProperty("sonar.projectKey", "jav-file-extension")
       .setProperty("sonar.projectName", "jav-file-extension")
       .setProperty("sonar.projectVersion", "1.0-SNAPSHOT")
       .setProperty("sonar.sources", "src");
     orchestrator.executeBuild(scan);
 
-    Resource project = orchestrator.getServer().getWsClient().find(ResourceQuery.createForMetrics("jav-file-extension",
-      "files", "ncloc"));
+    Resource project = orchestrator.getServer().getWsClient().find(ResourceQuery.createForMetrics("jav-file-extension", "files", "ncloc"));
     assertThat(project.getMeasureIntValue("files")).isEqualTo(1);
     assertThat(project.getMeasureIntValue("ncloc")).isGreaterThan(0);
   }
 
   @Test
   public void support_change_of_extension_property() {
-    SonarRunner scan = SonarRunner.create(TestUtils.projectDir("jav-file-extension"))
+    SonarScanner scan = SonarScanner.create(TestUtils.projectDir("jav-file-extension"))
       .setProperty("sonar.projectKey", "jav-file-extension")
       .setProperty("sonar.projectName", "jav-file-extension")
       .setProperty("sonar.projectVersion", "1.0-SNAPSHOT")
@@ -237,8 +200,7 @@ public class JavaTest {
       .setProperty("sonar.sources", "src");
     orchestrator.executeBuild(scan);
 
-    Resource project = orchestrator.getServer().getWsClient().find(ResourceQuery.createForMetrics("jav-file-extension",
-      "files", "ncloc"));
+    Resource project = orchestrator.getServer().getWsClient().find(ResourceQuery.createForMetrics("jav-file-extension", "files", "ncloc"));
     assertThat(project.getMeasureIntValue("files")).isEqualTo(2);
     assertThat(project.getMeasureIntValue("ncloc")).isGreaterThan(0);
   }
@@ -265,8 +227,7 @@ public class JavaTest {
 
     MavenBuild build = MavenBuild.create(TestUtils.projectPom("java-version-aware-visitor"))
       .setCleanSonarGoals()
-      .setProperty("sonar.profile", "java-version-aware-visitor")
-      .setProperty("sonar.dynamicAnalysis", "false");
+      .setProperty("sonar.profile", "java-version-aware-visitor");
 
     // no java version specified. got issue on java 7 code
     orchestrator.executeBuild(build);
